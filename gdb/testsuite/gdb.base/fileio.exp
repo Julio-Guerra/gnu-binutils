@@ -115,6 +115,10 @@ gdb_test continue \
 "Continuing\\..*read 2:.*EBADF$stop_msg" \
 "Read using invalid file descriptor returns EBADF"
 
+gdb_test "continue\nHello World\ncontinue" \
+"Continuing\\..*read 3: Hello World OK$stop_msg" \
+"Read using standard input shared with gdb"
+
 gdb_test continue \
 "Continuing\\..*lseek 1:.*OK$stop_msg" \
 "Lseeking CUR a file"

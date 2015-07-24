@@ -554,84 +554,39 @@ remote_fileio_func_read (char *buf)
   switch (fd)
     {
       case FIO_FD_CONSOLE_OUT:
-	remote_fileio_badfd ();
-	return;
+        remote_fileio_badfd ();
+        return;
       case FIO_FD_CONSOLE_IN:
-	{
-	  static char *remaining_buf = NULL;
-	  static int remaining_length = 0;
-
-	  buffer = (gdb_byte *) xmalloc (16384);
-	  if (remaining_buf)
-	    {
-	      remote_fio_no_longjmp = 1;
-	      if (remaining_length > length)
-		{
-		  memcpy (buffer, remaining_buf, length);
-		  memmove (remaining_buf, remaining_buf + length,
-			   remaining_length - length);
-		  remaining_length -= length;
-		  ret = length;
-		}
-	      else
-		{
-		  memcpy (buffer, remaining_buf, remaining_length);
-		  xfree (remaining_buf);
-		  remaining_buf = NULL;
-		  ret = remaining_length;
-		}
-	    }
-	  else
-	    {
-	      /* Windows (at least XP and Server 2003) has difficulty
-		 with large reads from consoles.  If a handle is
-		 backed by a real console device, overly large reads
-		 from the handle will fail and set errno == ENOMEM.
-		 On a Windows Server 2003 system where I tested,
-		 reading 26608 bytes from the console was OK, but
-		 anything above 26609 bytes would fail.  The limit has
-		 been observed to vary on different systems.  So, we
-		 limit this read to something smaller than that - by a
-		 safe margin, in case the limit depends on system
-		 resources or version.  */
-	      ret = ui_file_read (gdb_stdtargin, (char *) buffer, 16383);
-	      remote_fio_no_longjmp = 1;
-	      if (ret > 0 && (size_t)ret > length)
-		{
-		  remaining_buf = (char *) xmalloc (ret - length);
-		  remaining_length = ret - length;
-		  memcpy (remaining_buf, buffer + length, remaining_length);
-		  ret = length;
-		}
-	    }
-	}
-	break;
+        buffer = (gdb_byte *) xmalloc (length);
+        remote_fio_no_longjmp = 1;
+        ret = ui_file_read (gdb_stdtargin, (char *) buffer, length);
+        break;
       default:
-	buffer = (gdb_byte *) xmalloc (length);
-	/* POSIX defines EINTR behaviour of read in a weird way.  It's allowed
-	   for read() to return -1 even if "some" bytes have been read.  It
-	   has been corrected in SUSv2 but that doesn't help us much...
-	   Therefore a complete solution must check how many bytes have been
-	   read on EINTR to return a more reliable value to the target */
-	old_offset = lseek (fd, 0, SEEK_CUR);
-	remote_fio_no_longjmp = 1;
-	ret = read (fd, buffer, length);
-	if (ret < 0 && errno == EINTR)
-	  {
-	    new_offset = lseek (fd, 0, SEEK_CUR);
-	    /* If some data has been read, return the number of bytes read.
-	       The Ctrl-C flag is set in remote_fileio_reply() anyway.  */
-	    if (old_offset != new_offset)
-	      ret = new_offset - old_offset;
-	  }
-	break;
+        buffer = (gdb_byte *) xmalloc (length);
+        /* POSIX defines EINTR behaviour of read in a weird way.  It's allowed
+           for read() to return -1 even if "some" bytes have been read.  It
+           has been corrected in SUSv2 but that doesn't help us much...
+           Therefore a complete solution must check how many bytes have been
+           read on EINTR to return a more reliable value to the target */
+        old_offset = lseek (fd, 0, SEEK_CUR);
+        remote_fio_no_longjmp = 1;
+        ret = read (fd, buffer, length);
+        if (ret < 0 && errno == EINTR)
+          {
+            new_offset = lseek (fd, 0, SEEK_CUR);
+            /* If some data has been read, return the number of bytes read.
+               The Ctrl-C flag is set in remote_fileio_reply() anyway.  */
+            if (old_offset != new_offset)
+              ret = new_offset - old_offset;
+          }
+        break;
     }
 
   if (ret > 0)
     {
       errno = target_write_memory (ptrval, buffer, ret);
       if (errno != 0)
-	ret = -1;
+        ret = -1;
     }
 
   if (ret < 0)

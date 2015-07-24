@@ -188,14 +188,14 @@ test_read ()
   fd = open (OUTDIR FILENAME, O_RDONLY);
   if (fd >= 0)
     {
-      memset (buf, 0, 16);
+      memset (buf, 0, sizeof (buf));
       errno = 0;
-      ret = read (fd, buf, 16);
-      buf[15] = '\0'; /* Don't trust anybody... */
+      ret = read (fd, buf, sizeof (buf));
+      buf[sizeof (buf) - 1] = '\0'; /* Don't trust anybody... */
       if (ret == strlen (STRING))
         printf ("read 1: %s %s\n", buf, !strcmp (buf, STRING) ? "OK" : "");
       else
-	printf ("read 1: ret = %d, errno = %d\n", ret, errno);
+				printf ("read 1: ret = %d, errno = %d\n", ret, errno);
       close (fd);
     }
   else
@@ -203,10 +203,19 @@ test_read ()
   stop ();
   /* Read using invalid file descriptor */
   errno = 0;
-  ret = read (999, buf, 16);
+  ret = read (999, buf, sizeof (buf));
   printf ("read 2: ret = %d, errno = %d %s\n", ret, errno,
-	  strerrno (errno));
+					strerrno (errno));
   stop ();
+	/* Read 'Hello World\n' from standard input which is gdb's console */
+	ret = read(STDIN_FILENO, buf, sizeof (buf));
+	buf[sizeof (buf) - 1] = '\0'; /* Don't trust anybody... */
+	if (ret == strlen (STRING "\n"))
+		printf ("read 3: %s\n", !strcmp (buf, STRING "\n") ? STRING " OK" : "");
+	else
+		printf ("read 3: ret = %d, errno = %d\n", ret, errno);
+	stop();
+	stop();
 }
 
 int
